@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tests des modules — Loup-Garou 3D</title>
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #070a16; color: #eef0f7; padding: 32px clamp(16px, 5vw, 64px); }
+    h1 { font-family: Cinzel, Georgia, serif; color: #e9c46a; margin: 0 0 6px; letter-spacing: .04em; }
+    p.lead { color: #9aa3bd; margin: 0 0 24px; }
+    .summary { display: inline-block; padding: 10px 16px; border-radius: 12px; font-weight: 700; margin-bottom: 22px; }
+    .summary.ok { background: rgba(94, 230, 160, .15); color: #5ee6a0; border: 1px solid rgba(94, 230, 160, .4); }
+    .summary.ko { background: rgba(230, 57, 70, .15); color: #ff9aa2; border: 1px solid rgba(230, 57, 70, .4); }
+    section { margin-bottom: 18px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(233, 196, 106, .15); border-radius: 14px; padding: 14px 18px; }
+    h2 { font-size: 15px; margin: 0 0 8px; color: #e9c46a; letter-spacing: .06em; text-transform: uppercase; }
+    li { list-style: none; padding: 5px 0; font-size: 14px; }
+    .err { color: #ff9aa2; font-size: 13px; margin-left: 26px; }
+    a { color: #b388ff; }
+    code { background: rgba(255,255,255,.07); padding: 2px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Tests des modules</h1>
+  <p class="lead">Chaque squad : 1 scénario nominal + au moins 2 cas limites, avec des données factices. Aussi lançable en terminal : <code>node tests/run-node.mjs</code> · <a href="../index.html">← Retour au jeu</a></p>
+  <div id="summary" class="summary">Exécution…</div>
+  <div id="out"></div>
+  <script type="module">
+    import { runAll } from './cases.js';
+    const results = await runAll();
+    const byModule = Map.groupBy ? Map.groupBy(results, r => r.module) : results.reduce((m, r) => m.set(r.module, [...(m.get(r.module) ?? []), r]), new Map());
+    const out = document.getElementById('out');
+    for (const [mod, list] of byModule) {
+      const s = document.createElement('section');
+      s.innerHTML = `<h2>${mod}</h2><ul>${list.map(r => `<li>${r.ok ? '✅' : '❌'} ${r.name}${r.ok ? '' : `<div class="err">→ ${r.error}</div>`}</li>`).join('')}</ul>`;
+      out.appendChild(s);
+    }
+    const failed = results.filter(r => !r.ok).length;
+    const sum = document.getElementById('summary');
+    sum.textContent = `${results.length - failed}/${results.length} tests réussis`;
+    sum.className = `summary ${failed ? 'ko' : 'ok'}`;
+  </script>
+</body>
+</html>

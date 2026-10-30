@@ -1,0 +1,10 @@
+{
+  "name": "loup-garou-3d",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "node tests/run-node.mjs"
+  }
+}

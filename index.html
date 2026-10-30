@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Loup-Garou 3D — Une nuit à Brumeval</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Three.js chargé depuis le CDN via une import map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body class="is-night">
+  <div id="stage" aria-hidden="true"></div>
+  <div id="labels" aria-hidden="true"></div>
+  <div id="vignette"></div>
+  <div id="flash"></div>
+
+  <!-- ===== HUD ===== -->
+  <header id="hud" class="hidden">
+    <div class="hud-left">
+      <button class="icon-btn" id="btn-menu" title="Retour au menu">⟲</button>
+    </div>
+    <div class="hud-center glass">
+      <span class="phase-icon" id="phase-icon">🌙</span>
+      <span class="phase-label" id="phase-label">Nuit 1</span>
+      <span class="hud-sep"></span>
+      <span class="timer" id="timer">--:--</span>
+      <span class="hud-sep"></span>
+      <span class="alive" id="alive-count">8 en vie</span>
+    </div>
+    <div class="hud-right">
+      <button class="icon-btn" id="btn-roles" title="Afficher les rôles (mode spectateur)">👁</button>
+      <button class="icon-btn" id="btn-sound" title="Sons d'ambiance">🔊</button>
+      <button class="icon-btn" id="btn-voice" title="Voix du narrateur">🗣️</button>
+      <button class="icon-btn" id="btn-journal" title="Journal et chat">📜</button>
+    </div>
+  </header>
+
+  <aside id="roster" class="glass hidden" aria-label="Joueurs"></aside>
+
+  <aside id="journal" class="glass hidden" aria-label="Journal d'événements">
+    <div class="panel-title">📜 Journal de Brumeval</div>
+    <ol id="journal-list"></ol>
+    <form id="chat-form" class="chat hidden" autocomplete="off">
+      <input id="chat-input" maxlength="200" placeholder="Écrire au village…" aria-label="Message" />
+      <button type="submit" aria-label="Envoyer">➤</button>
+    </form>
+  </aside>
+
+  <div id="subtitle" aria-live="polite"></div>
+  <div id="action-panel" class="glass hidden" role="dialog"></div>
+  <div id="debate-bar" class="glass hidden"></div>
+  <div id="overlay" class="hidden"></div>
+
+  <!-- ===== ÉCRAN DE CONFIGURATION ===== -->
+  <section id="setup" class="screen">
+    <div class="setup-hero">
+      <div class="moon-glyph"></div>
+      <p class="kicker">Jeu de rôle · Village de Brumeval</p>
+      <h1 class="title">Loup&#8209;Garou</h1>
+      <p class="tagline">Quand la nuit tombe, la meute se réveille.<br />Au matin, le village cherche les coupables.</p>
+      <ul class="how">
+        <li><b>🌙 La nuit</b> les loups dévorent, la voyante sonde, la sorcière choisit ses potions.</li>
+        <li><b>☀️ Le jour</b> le village débat puis vote pour éliminer un suspect.</li>
+        <li><b>🏆 Victoire</b> du village si tous les loups tombent, de la meute si elle devient majoritaire.</li>
+      </ul>
+      <a class="tests-link" href="tests/index.html">🧪 Tests des modules →</a>
+    </div>
+
+    <div class="setup-right">
+    <div class="mode-tabs" role="tablist">
+      <button type="button" class="active" data-tab="local">🖥️ Sur cet écran</button>
+      <button type="button" data-tab="online">🌐 En ligne</button>
+    </div>
+    <form class="setup-card glass" id="setup-form" autocomplete="off">
+      <div class="card-head">
+        <h2>Nouvelle partie</h2>
+        <div class="presets">
+          <button type="button" data-preset="solo">Solo contre l'IA</button>
+          <button type="button" data-preset="group">Toute la squad</button>
+          <button type="button" data-preset="demo">Démo (100 % IA)</button>
+        </div>
+      </div>
+
+      <div class="players-head">
+        <span>Joueurs <b id="player-count">8</b>/16</span>
+        <span class="muted">Clique sur 🤖/👤 pour changer</span>
+      </div>
+      <ul id="player-list"></ul>
+      <button type="button" class="ghost-btn" id="add-player">+ Ajouter un joueur</button>
+
+      <div class="compo" id="compo"></div>
+
+      <div class="options">
+        <label>Débat
+          <select id="opt-debate">
+            <option value="30">30 s</option>
+            <option value="60" selected>60 s</option>
+            <option value="90">90 s</option>
+            <option value="120">2 min</option>
+          </select>
+        </label>
+        <label>Rythme
+          <select id="opt-speed">
+            <option value="1">Normal</option>
+            <option value="0.6">Rapide</option>
+            <option value="1.4">Cinématique</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="opt-voice" /> Narrateur vocal</label>
+        <label class="check"><input type="checkbox" id="opt-sound" checked /> Ambiance</label>
+      </div>
+
+      <p class="error" id="setup-error" role="alert"></p>
+      <button type="submit" class="cta">Lancer la partie</button>
+      <p class="fineprint" id="three-status">Chargement du village 3D…</p>
+    </form>
+
+    <!-- ===== MODE EN LIGNE : créer ou rejoindre une salle ===== -->
+    <div class="setup-card glass hidden" id="online-card">
+      <div class="card-head">
+        <h2>Jouer en ligne</h2>
+        <p class="muted small">Chacun sur son téléphone ou son ordi, en même temps.</p>
+      </div>
+      <label class="field">Ton pseudo
+        <input id="online-name" maxlength="16" placeholder="ex. Taha" autocomplete="nickname" />
+      </label>
+      <button type="button" class="cta" id="btn-create">✨ Créer une salle</button>
+      <div class="or"><span>ou rejoindre une salle avec un code</span></div>
+      <div class="join-row">
+        <input id="join-code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code de la salle" />
+        <button type="button" class="btn primary" id="btn-join">Rejoindre</button>
+      </div>
+      <p class="error" id="online-error" role="alert"></p>
+      <p class="fineprint" id="online-status">Vérification du serveur…</p>
+    </div>
+    </div>
+  </section>
+
+  <!-- ===== SALON D'ATTENTE (mode en ligne) ===== -->
+  <section id="lobby" class="screen hidden">
+    <div class="lobby-card glass">
+      <p class="kicker">Code de la salle</p>
+      <div class="room-code" id="room-code">----</div>
+      <div class="share-row">
+        <code id="room-link"></code>
+        <button type="button" class="btn" id="btn-copy-link">📋 Copier le lien</button>
+      </div>
+      <div class="players-head"><span>Joueurs connectés : <b id="lobby-count">1</b></span><span class="muted" id="lobby-total"></span></div>
+      <ul id="lobby-players"></ul>
+      <div id="lobby-host" class="lobby-host">
+        <div class="bots-row">
+          <span>🤖 Bots pour compléter</span>
+          <div class="stepper"><button type="button" class="btn" data-bots="-1" aria-label="Moins de bots">−</button><b id="bots-count">3</b><button type="button" class="btn" data-bots="1" aria-label="Plus de bots">+</button></div>
+        </div>
+        <label class="bots-row"><span>⏳ Durée du débat</span>
+          <select id="lobby-debate"><option value="30">30 s</option><option value="60">60 s</option><option value="90">90 s</option><option value="120">2 min</option></select>
+        </label>
+      </div>
+      <div class="compo" id="lobby-compo"></div>
+      <p class="error" id="lobby-error" role="alert"></p>
+      <button type="button" class="cta" id="btn-start-online">Lancer la partie</button>
+      <p class="fineprint" id="lobby-wait">En attente de l'hôte…</p>
+      <button type="button" class="ghost-btn" id="btn-leave">Quitter la salle</button>
+    </div>
+  </section>
+
+  <!-- ===== ÉCRAN DE FIN ===== -->
+  <section id="endscreen" class="screen hidden"></section>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
